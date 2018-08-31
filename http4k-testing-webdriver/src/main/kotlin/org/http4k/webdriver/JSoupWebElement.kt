@@ -52,9 +52,10 @@ data class JSoupWebElement(private val navigate: Navigate, private val getURL: G
                         .filter { it.isSelected }
                         .map { it.getAttribute("value") }
                 }
-            val buttons = it.findElements(By.tagName("button"))
-                    .filter { it.getAttribute("name") != "" && it == this}
-                    .map { it.getAttribute("name") to listOf(it.getAttribute("value")) }
+            val nattr = getAttribute("name")
+            val vattr = getAttribute("value")
+            val buttons = if (isA("button") && nattr != null && nattr != "" && vattr != null && vattr != "") listOf(nattr to listOf(vattr)) else listOf()
+
             val form = WebForm(inputs.plus(textareas).plus(selects).plus(buttons)
                 .groupBy { it.first }
                 .mapValues { it.value.map { it.second }.flatMap { it } })
@@ -62,7 +63,8 @@ data class JSoupWebElement(private val navigate: Navigate, private val getURL: G
             val body = Body.webForm(Validator.Strict,
                 *(form.fields.map { FormField.multi.required(it.key) }.toTypedArray())).toLens()
 
-            val uri = (it.element.attr("action") ?: getURL()) ?: "<unknown>"
+            val action = it.element.attr("action")
+            val uri = if (action.isNullOrEmpty())  getURL() ?: "<unknown>" else action
             val postRequest = Request(method, uri).with(body of form)
 
             if (method == Method.POST) navigate(postRequest)

@@ -1,8 +1,7 @@
 package org.http4k.webdriver
 
+import com.natpryce.hamkrest.*
 import com.natpryce.hamkrest.assertion.assertThat
-import com.natpryce.hamkrest.equalTo
-import com.natpryce.hamkrest.present
 import org.http4k.core.Method
 import org.http4k.core.Response
 import org.http4k.core.Status.Companion.OK
@@ -65,21 +64,46 @@ class Http4kWebDriverTest {
         var loadCount = 0
         val driver = Http4kWebDriver {
             req ->
-                loadCount++
-                val body = File("src/test/resources/test.html").readText()
-                Response(OK).body(body
-                        .replace("FORMMETHOD", Method.POST.name)
-                        .replace("THEMETHOD", req.method.name)
-                        .replace("THEBODY", req.bodyString())
-                        .replace("THEURL", req.uri.toString())
-                        .replace("THETIME", System.currentTimeMillis().toString())
-                        .replace("ACTION", "action")
-                )
+            loadCount++
+            val body = File("src/test/resources/test.html").readText()
+            Response(OK).body(body
+                    .replace("FORMMETHOD", Method.POST.name)
+                    .replace("THEMETHOD", req.method.name)
+                    .replace("THEBODY", req.bodyString())
+                    .replace("THEURL", req.uri.toString())
+                    .replace("THETIME", System.currentTimeMillis().toString())
+                    .replace("ACTION", "action")
+            )
         }
         val n0 = loadCount
         driver.get("/bob")
         driver.findElement(By.id("button"))!!.submit()
         driver.assertOnPage("/bob")
+        assertThat(loadCount, equalTo(n0+2))
+        assertThat(driver.findElement(By.tagName("thebody"))!!.text, equalTo("text1=textValue&checkbox1=checkbox&textarea1=textarea&select1=option1&select1=option2&button=yes"))
+        assertThat(driver.findElement(By.tagName("themethod"))!!.text, equalTo("POST"))
+    }
+
+    @Test
+    fun `POST form with action set to empty string`() {
+        var loadCount = 0
+        val driver = Http4kWebDriver {
+            req ->
+            loadCount++
+            val body = File("src/test/resources/test.html").readText()
+            Response(OK).body(body
+                    .replace("FORMMETHOD", Method.POST.name)
+                    .replace("THEMETHOD", req.method.name)
+                    .replace("THEBODY", req.bodyString())
+                    .replace("THEURL", req.uri.toString())
+                    .replace("THETIME", System.currentTimeMillis().toString())
+                    .replace("ACTION", "action=\"\"")
+            )
+        }
+        val n0 = loadCount
+        driver.get("http://127.0.0.1/bob")
+        driver.findElement(By.id("button"))!!.submit()
+        driver.assertOnPage("http://127.0.0.1/bob")
         assertThat(loadCount, equalTo(n0+2))
         assertThat(driver.findElement(By.tagName("thebody"))!!.text, equalTo("text1=textValue&checkbox1=checkbox&textarea1=textarea&select1=option1&select1=option2&button=yes"))
         assertThat(driver.findElement(By.tagName("themethod"))!!.text, equalTo("POST"))
