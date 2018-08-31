@@ -39,32 +39,32 @@ data class JSoupWebElement(private val navigate: Navigate, private val getURL: G
         current("form")?.let {
             val method = it.element.attr("method")?.let(String::toUpperCase)?.let(Method::valueOf) ?: Method.POST
             val inputs = it
-                .findElements(By.tagName("input"))
-                .filter { it.getAttribute("name") != "" }
-                .map { it.getAttribute("name") to listOf(it.getAttribute("value")) }
+                    .findElements(By.tagName("input"))
+                    .filter { it.getAttribute("name") != "" }
+                    .map { it.getAttribute("name") to listOf(it.getAttribute("value")) }
             val textareas = it.findElements(By.tagName("textarea"))
-                .filter { it.getAttribute("name") != "" }
-                .map { it.getAttribute("name") to listOf(it.text) }
+                    .filter { it.getAttribute("name") != "" }
+                    .map { it.getAttribute("name") to listOf(it.text) }
             val selects = it.findElements(By.tagName("select"))
-                .filter { it.getAttribute("name") != "" }
-                .map {
-                    it.getAttribute("name") to it.findElements(By.tagName("option"))
-                        .filter { it.isSelected }
-                        .map { it.getAttribute("value") }
-                }
-            val nattr = getAttribute("name")
-            val vattr = getAttribute("value")
-            val buttons = if (isA("button") && nattr != null && nattr != "" && vattr != null && vattr != "") listOf(nattr to listOf(vattr)) else listOf()
-
+                    .filter { it.getAttribute("name") != "" }
+                    .map {
+                        it.getAttribute("name") to it.findElements(By.tagName("option"))
+                                .filter { it.isSelected }
+                                .map { it.getAttribute("value") }
+                    }
+            // TODO: fix JSoupWebElement equality to get rid of the toString() hack
+            val buttons = it.findElements(By.tagName("button"))
+                    .filter { it.getAttribute("name") != "" && it.toString() == this.toString() }
+                    .map { it.getAttribute("name") to listOf(it.getAttribute("value")) }
             val form = WebForm(inputs.plus(textareas).plus(selects).plus(buttons)
-                .groupBy { it.first }
-                .mapValues { it.value.map { it.second }.flatMap { it } })
+                    .groupBy { it.first }
+                    .mapValues { it.value.map { it.second }.flatMap { it } })
 
             val body = Body.webForm(Validator.Strict,
-                *(form.fields.map { FormField.multi.required(it.key) }.toTypedArray())).toLens()
+                    *(form.fields.map { FormField.multi.required(it.key) }.toTypedArray())).toLens()
 
             val action = it.element.attr("action")
-            val uri = if (action.isNullOrEmpty())  getURL() ?: "<unknown>" else action
+            val uri = if (action.isNullOrEmpty()) getURL() ?: "<unknown>" else action
             val postRequest = Request(method, uri).with(body of form)
 
             if (method == Method.POST) navigate(postRequest)

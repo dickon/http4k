@@ -5,6 +5,7 @@ import com.natpryce.hamkrest.assertion.assertThat
 import org.http4k.core.Method
 import org.http4k.core.Response
 import org.http4k.core.Status.Companion.OK
+import org.http4k.core.Uri
 import org.http4k.core.cookie.cookie
 import org.http4k.core.cookie.cookies
 import org.junit.jupiter.api.Test
@@ -64,16 +65,16 @@ class Http4kWebDriverTest {
         var loadCount = 0
         val driver = Http4kWebDriver {
             req ->
-            loadCount++
-            val body = File("src/test/resources/test.html").readText()
-            Response(OK).body(body
-                    .replace("FORMMETHOD", Method.POST.name)
-                    .replace("THEMETHOD", req.method.name)
-                    .replace("THEBODY", req.bodyString())
-                    .replace("THEURL", req.uri.toString())
-                    .replace("THETIME", System.currentTimeMillis().toString())
-                    .replace("ACTION", "action")
-            )
+                loadCount++
+                val body = File("src/test/resources/test.html").readText()
+                Response(OK).body(body
+                        .replace("FORMMETHOD", Method.POST.name)
+                        .replace("THEMETHOD", req.method.name)
+                        .replace("THEBODY", req.bodyString())
+                        .replace("THEURL", req.uri.toString())
+                        .replace("THETIME", System.currentTimeMillis().toString())
+                        .replace("ACTION", "action")
+                )
         }
         val n0 = loadCount
         driver.get("/bob")
@@ -151,6 +152,11 @@ class Http4kWebDriverTest {
         driver.navigate().refresh()
         driver.assertOnPage("/bill")
         assertThat(driver.findElement(By.tagName("h2"))!!.text, !equalTo(preRefreshTime))
+        driver.get(Uri.of("https://localhost/rita"))
+        driver.assertOnPage("https://localhost/rita")
+        driver.get("/bill")
+        driver.assertOnPage("/bill")
+        driver.navigate().to(Uri.of("https://localhost/rita"))
     }
 
     @Test
@@ -193,7 +199,6 @@ class Http4kWebDriverTest {
         assertLinkGoesTo("/", By.id("dotBackPath"), "/bob/link")
         assertLinkGoesTo("/", By.id("rootBackPath"), "/bob/link")
     }
-
 
     private fun assertLinkGoesTo(initial: String, by: By, expected: String) {
         driver.get(initial)

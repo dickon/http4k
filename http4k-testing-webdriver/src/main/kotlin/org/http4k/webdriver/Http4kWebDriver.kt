@@ -1,6 +1,5 @@
 package org.http4k.webdriver
 
-
 import org.http4k.core.Filter
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method.GET
@@ -25,9 +24,12 @@ import java.util.Date
 import java.util.UUID
 import org.http4k.core.cookie.Cookie as HCookie
 
-
 typealias Navigate = (Request) -> Unit
 typealias GetURL = () -> String?
+
+interface Http4KNavigation : Navigation {
+    fun to(uri: Uri)
+}
 
 class Http4kWebDriver(initialHandler: HttpHandler) : WebDriver {
     private val handler = ClientFilters.FollowRedirects()
@@ -43,7 +45,7 @@ class Http4kWebDriver(initialHandler: HttpHandler) : WebDriver {
     private fun navigateTo(request: Request) {
         val normalizedPath = request.uri(request.uri.path(normalized(request.uri.path)))
         val response = handler(normalizedPath)
-        current = Page(response.status, this::navigateTo, { getCurrentUrl()}, UUID.randomUUID(), normalized(latestUri), response.bodyString(), current)
+        current = Page(response.status, this::navigateTo, { currentUrl }, UUID.randomUUID(), normalized(latestUri), response.bodyString(), current)
     }
 
     private fun normalized(path: String) = when {
@@ -64,11 +66,14 @@ class Http4kWebDriver(initialHandler: HttpHandler) : WebDriver {
 
     private fun HCookie.toWebDriver(): Cookie = Cookie(name, value, domain, path,
             expires?.let { Date.from(it.atZone(ZoneId.systemDefault()).toInstant()) }, secure, httpOnly)
+
     private fun LocalCookie.toWebDriver(): Http4kWebDriver.StoredCookie = StoredCookie(cookie.toWebDriver(), this)
 
     override fun get(url: String) {
         navigateTo(Request(GET, url).body(""))
     }
+
+    fun get(uri: Uri) = this.get(uri.toString())
 
     override fun getCurrentUrl(): String? = current?.url
 
@@ -114,7 +119,7 @@ class Http4kWebDriver(initialHandler: HttpHandler) : WebDriver {
         override fun defaultContent(): WebDriver = this@Http4kWebDriver
     }
 
-    override fun navigate(): Navigation = object : Navigation {
+    override fun navigate(): Http4KNavigation = object : Http4KNavigation {
         override fun to(url: String) = get(url)
 
         override fun to(url: URL) = get(url.toString())
@@ -132,6 +137,8 @@ class Http4kWebDriver(initialHandler: HttpHandler) : WebDriver {
         override fun back() {
             current?.previous?.let { current = it.copy(next = current) }
         }
+
+        override fun to(uri: Uri) = get(uri.toString())
     }
 
     override fun manage() = object : WebDriver.Options {
