@@ -62,7 +62,8 @@ data class JSoupWebElement(private val navigate: Navigate, private val getURL: G
             val body = Body.webForm(Validator.Strict,
                     *(form.fields.map { FormField.multi.required(it.key) }.toTypedArray())).toLens()
 
-            val uri = (it.element.attr("action") ?: getURL()) ?: "<unknown>"
+            val action = it.element.attr("action")
+            val uri = if (action.isNullOrEmpty()) getURL() ?: "<unknown>" else action
             val postRequest = Request(method, uri).with(body of form)
 
             if (method == Method.POST) navigate(postRequest)
