@@ -1,10 +1,6 @@
 package org.http4k.webdriver
 
-import org.http4k.core.Body
-import org.http4k.core.Method
-import org.http4k.core.Request
-import org.http4k.core.Uri
-import org.http4k.core.with
+import org.http4k.core.*
 import org.http4k.lens.FormField
 import org.http4k.lens.Validator
 import org.http4k.lens.WebForm
@@ -62,12 +58,17 @@ data class JSoupWebElement(private val navigate: Navigate, private val getURL: G
             val body = Body.webForm(Validator.Strict,
                     *(form.fields.map { FormField.multi.required(it.key) }.toTypedArray())).toLens()
 
-            val action = it.element.attr("action")
-            val uri = if (action.isNullOrEmpty()) getURL() ?: "<unknown>" else action
-            val postRequest = Request(method, uri).with(body of form)
+            val formtarget = Uri.of(it.element.attr("action") ?: "")
+            val current = getURL()
+            val action = when {
+                formtarget.host == "" && formtarget.path == "" && current != null -> Uri.of(current)
+                formtarget.host == "" && current != null -> Uri.of(current).path(formtarget.path)
+                else -> formtarget
+            }
+            val postRequest= Request(method, action.toString()).with(body of form)
 
             if (method == Method.POST) navigate(postRequest)
-            else navigate(Request(method, Uri.of(uri).query(postRequest.bodyString())).body(""))
+            else navigate(Request(method, action.query(postRequest.bodyString())).body(""))
         }
     }
 
